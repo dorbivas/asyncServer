@@ -57,8 +57,9 @@ void acceptConnection(int index, SocketState* sockets, int& socCount)
 	return;
 }
 
-void receiveMessage(int index, SocketState* sockets, int& socCount)
+void receiveMessage(int index, SocketState* sockets, int& socCount) 
 {
+	
 	SOCKET msgSocket = sockets[index].id;
 	int len = sockets[index].len;
 	int bytesRecv = recv(msgSocket, &sockets[index].buff[len], sizeof(sockets[index].buff) - len, 0);
