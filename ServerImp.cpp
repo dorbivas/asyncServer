@@ -1,6 +1,5 @@
 #include "ServerImp.h"
 
-
 bool addSocket(SOCKET id, Status what, SocketState* sockets, int& socCount)
 {
 	// Set the socket to be in non-blocking mode.
@@ -58,7 +57,6 @@ void acceptConnection(int index, SocketState* sockets, int& socCount)
 
 void receiveMessage(int index, SocketState* sockets, int& socCount) 
 {
-	
 	SOCKET msgSocket = sockets[index].id;
 	int len = sockets[index].len;
 	int bytesRecv = recv(msgSocket, &sockets[index].buff[len], sizeof(sockets[index].buff) - len, 0);
@@ -80,15 +78,12 @@ void receiveMessage(int index, SocketState* sockets, int& socCount)
 	{
 		sockets[index].buff[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
 		cout << "HTTP Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buff[len] << "\" message.\n";
-
 		sockets[index].len += bytesRecv;
-
 		if (sockets[index].len > 0)
 		{
 			updateSubType(index, sockets);
 		}
 	}
-
 }
 
 void sendMessage(int index, SocketState* sockets)
@@ -113,7 +108,7 @@ void sendMessage(int index, SocketState* sockets)
 			deleteReq(innerAddress, sockets, index, deleteBuff, returnMsg, currTime, fileSize, buffLen, sendBuff);
 			break;
 		case PUT:
-			putRequestHelper(returnCode, index, sockets, returnMsg, currTime, fileSize, buffLen, sendBuff);
+			putReq(returnCode, index, sockets, returnMsg, currTime, fileSize, buffLen, sendBuff);
 			break;
 		case POST:
 			postReq(returnMsg, currTime, content, sockets, index, buffLen, sendBuff);
@@ -130,6 +125,7 @@ void sendMessage(int index, SocketState* sockets)
 		default:
 			break;
 	}
+
 	bytesSent = send(msgSocket, sendBuff, buffLen, 0);
 	//clean buffer: memset put NULL in every spot of the buffer 
 	memset(sockets[index].buff, 0, BUFF_MAX_SIZE);
@@ -142,7 +138,6 @@ void sendMessage(int index, SocketState* sockets)
 	}
 
 	cout << "HTTP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n";
-
 	sockets[index].send = IDLE;
 }
 
@@ -235,7 +230,6 @@ void getReq(string& innerAddress, string& msgLang, int index,
 		while (httpFile.getline(readBuff, BUFF_MAX_SIZE))
 			content += readBuff;
 	}
-	//dadsa(httpFile, returnMsg, currTime, fileSizeInString, content, buffLen, sendBuff);
 	closeFileSequence(httpFile, returnedMsg, currentTime, fileSize, buffLen, sendBuff, content);
 }
 
@@ -280,7 +274,6 @@ void headReq(std::string& innerAddress,
 	}
 	closeFileSequence(httpFile, returnMsg, currentTime, fileSize, buffLen, sendBuff);
 }
-
 
 void closeFileSequence(ifstream& httpFile, string& returnedMsg, time_t& currentTime, 
 	int fileSize, int& buffLen, char  sendBuff[2048], string content = "")
@@ -330,7 +323,6 @@ void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& retu
 	buffLen = returnMsg.size();
 	strcpy(sendBuff, returnMsg.c_str());
 }
-
 
 // A utility to check for the inactive sockets (if the response time is greater then 2 minutes) and remove them
 void updateSocStemp(SocketState* sockets, int& socCount)
