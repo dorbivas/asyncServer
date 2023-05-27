@@ -19,10 +19,10 @@ bool addSocket(SOCKET id, Status what, SocketState* sockets, int& socCount)
 			sockets[i].len = 0;
 			sockets[i].activeStemp = time(0);//reset responding time
 			socCount++;
-			return (true);
+			return true;
 		}
 	}
-	return (false);
+	return false;
 }
 
 void removeSocket(int index, SocketState* sockets, int& socCount)
@@ -36,12 +36,11 @@ void removeSocket(int index, SocketState* sockets, int& socCount)
 
 void acceptConnection(int index, SocketState* sockets, int& socCount)
 {
-	SOCKET id = sockets[index].id;
 	sockets[index].activeStemp = time(0);//reset responding time
 	struct sockaddr_in from;		// Address of sending partner
 	int fromLen = sizeof(from);
 
-	SOCKET msgSocket = accept(id, (struct sockaddr*)&from, &fromLen);
+	SOCKET msgSocket = accept(sockets[index].id, (struct sockaddr*)&from, &fromLen);
 	if (INVALID_SOCKET == msgSocket)
 	{
 		cout << "HTTP Server: Error at accept(): " << WSAGetLastError() << endl;
@@ -52,7 +51,7 @@ void acceptConnection(int index, SocketState* sockets, int& socCount)
 	if (addSocket(msgSocket, RCV, sockets, socCount) == false)
 	{
 		cout << "\t\tToo many connections, dropped!\n";
-		closesocket(id);
+		closesocket(sockets[index].id);
 	}
 	return;
 }
@@ -95,186 +94,41 @@ void receiveMessage(int index, SocketState* sockets, int& socCount)
 void sendMessage(int index, SocketState* sockets)
 {
 	int bytesSent = 0, buffLen = 0, fileSize = 0, returnCode;
+	SOCKET msgSocket = sockets[index].id;
 	size_t found;
 	char sendBuff[BUFF_MAX_SIZE], readBuff[BUFF_MAX_SIZE], deleteBuff[BUFF_MAX_SIZE];
-	ifstream httpFile;
-	string content, returnedMsg, fileSizeInString, address, innerAddress = "C:\\Temp\\HTML_FILES\\",
-		errorAddress = "C:\\Temp\\HTML_FILES\\Error\\error.html", url, msgLang;
-	time_t currentTime;
-	time(&currentTime); // Get current time
-	SOCKET msgSocket = sockets[index].id;
+	string content, returnMsg, address, innerAddress, errorAddress, url, msgLang;
+	time_t currTime;
+	innerAddress = "C:\\Temp\\HTML_FILES\\";
+	errorAddress = "C:\\Temp\\HTML_FILES\\Error\\error.html";
+	time(&currTime); // Get current time
 	sockets[index].activeStemp = time(0);//reset responding time
+
 	switch (sockets[index].sendSubType)
 	{
-	case TRACE:
-		sendTrace(fileSize, sockets, index, returnedMsg, currentTime, fileSizeInString, buffLen, sendBuff);
-		break;
-	case DELETE_:
-		address = innerAddress;
-		address += strtok(sockets[index].buff, " ");//get the file name
-		strcpy(deleteBuff, address.c_str());//move address to char* variable
-		if (remove(deleteBuff) != 0)
-		{
-			returnedMsg = "HTTP/1.1 204 No Content \r\nDate: "; // We treat 204 code as a case where delete wasn't successful
-		}
-		else
-		{
-			returnedMsg = "HTTP/1.1 200 OK \r\nDate: "; // File deleted succesfully
-		}
-
-		returnedMsg += ctime(&currentTime);
-		returnedMsg += "Content-length: ";
-		fileSizeInString = to_string(fileSize);
-		returnedMsg += fileSizeInString;
-		returnedMsg += "\r\n\r\n";
-		buffLen = returnedMsg.size();
-		strcpy(sendBuff, returnedMsg.c_str());
-		break;
-	case PUT:
-		char fileName[BUFF_MAX_SIZE];
-		returnCode = putReq(index, fileName, sockets);
-		switch (returnCode)
-		{
-		case 0:
-		{
-			cout << "PUT " << fileName << "Failed";
-			returnedMsg = "HTTP/1.1 412 Precondition failed \r\nDate: ";
+		case TRACE:
+			sendTrace(fileSize, sockets, index, returnMsg, currTime, buffLen, sendBuff);
 			break;
-		}
-
-		case 200:
-		{
-			returnedMsg = "HTTP/1.1 200 OK \r\nDate: ";
+		case DELETE_:
+			deleteReq(innerAddress, sockets, index, deleteBuff, returnMsg, currTime, fileSize, buffLen, sendBuff);
 			break;
-		}
-
-		case 201:
-		{
-			returnedMsg = "HTTP/1.1 201 Created \r\nDate: ";
+		case PUT:
+			putRequestHelper(returnCode, index, sockets, returnMsg, currTime, fileSize, buffLen, sendBuff);
 			break;
-		}
-
-		case 204:
-		{
-			returnedMsg = "HTTP/1.1 204 No Content \r\nDate: ";
+		case POST:
+			postReq(returnMsg, currTime, content, sockets, index, buffLen, sendBuff);
 			break;
-		}
-
+		case HEAD:
+			headReq(innerAddress, msgLang, index, sockets, errorAddress, url, returnMsg, fileSize, currTime, buffLen, sendBuff);
+			break;
+		case GET:
+			getReq(innerAddress, msgLang, index, sockets, errorAddress, returnMsg, url, readBuff, content, currTime, fileSize, buffLen, sendBuff);
+			break;
+		case OPTIONS:
+			optionsReq(returnMsg, buffLen, sendBuff);
+			break;
 		default:
-		{
-			returnedMsg = "HTTP/1.1 501 Not Implemented \r\nDate: ";
 			break;
-		}
-		}
-
-		returnedMsg += ctime(&currentTime);
-		returnedMsg += "Content-length: ";
-		fileSizeInString = to_string(fileSize);
-		returnedMsg += fileSizeInString;
-		returnedMsg += "\r\n\r\n";
-		buffLen = returnedMsg.size();
-		strcpy(sendBuff, returnedMsg.c_str());
-		break;
-	case POST:
-		returnedMsg = "HTTP/1.1 200 OK \r\nDate:";
-		returnedMsg += ctime(&currentTime);
-		returnedMsg += "Content-length: 0\r\n\r\n";
-		content = (string)sockets[index].buff;
-		found = content.find("\r\n\r\n");
-		cout << "------------------------------------------------------------\n"
-			<< "Message received!\n"
-			<< "\n------------------------------------------------------------\n"
-			<< &content[found + 4]
-			<< "\n------------------------------------------------------------\n\n";
-		buffLen = returnedMsg.size();
-		strcpy(sendBuff, returnedMsg.c_str());
-		break;
-	case HEAD:
-		address = innerAddress;
-		msgLang = getLen(index, sockets);
-		if (msgLang == "Error")
-			httpFile.open(errorAddress); //Error::No Language matched: there is no supporting language
-		else
-		{
-			address.append(msgLang);
-			address += "\\";
-			url = strtok(sockets[index].buff, " ");
-			found = url.find("?");
-			if (found != std::string::npos)//lang Query String exist
-			{
-				url = url.substr(0, found);
-			}
-			address.append(url);
-			httpFile.open(address);
-		}
-		if (!httpFile)
-			returnedMsg = "HTTP/1.1 404 Not Found ";
-		else
-		{
-			returnedMsg = "HTTP/1.1 200 OK ";
-			// Read content from file to string and get its length
-			httpFile.seekg(0, ios::end);
-			fileSize = httpFile.tellg(); // get length of content in file
-		}
-		httpFile.close();
-		returnedMsg += "\r\nContent-type: text/html";
-		returnedMsg += "\r\nDate: ";
-		returnedMsg += ctime(&currentTime);
-		returnedMsg += "Content-length: ";
-		fileSizeInString = to_string(fileSize);
-		returnedMsg += fileSizeInString;
-		returnedMsg += "\r\n\r\n";
-		buffLen = returnedMsg.size();
-		strcpy(sendBuff, returnedMsg.c_str());
-		break;
-	case GET:
-		address = innerAddress;
-		msgLang = getLen(index, sockets);
-		if (msgLang == "Error")
-		{
-			httpFile.open(errorAddress); //Error::No Language matched: there is no supporting language
-			returnedMsg = "HTTP/1.1 404 Not Found ";
-		}
-		else
-		{
-			address.append(msgLang);
-			address += "\\";
-			url = strtok(sockets[index].buff, " ");
-			found = url.find("?");
-			if (found != std::string::npos)//lang Query String exist
-			{
-				url = url.substr(0, found);
-			}
-			address.append(url);
-			httpFile.open(address);
-			returnedMsg = "HTTP/1.1 200 OK ";
-		}
-		if (httpFile)
-		{
-			// Read content from file to string and get its length
-			while (httpFile.getline(readBuff, BUFF_MAX_SIZE))
-				content += readBuff;
-		}
-		httpFile.close();
-		returnedMsg += "\r\nContent-type: text/html";
-		returnedMsg += "\r\nDate: ";
-		returnedMsg += ctime(&currentTime);
-		returnedMsg += "Content-length: ";
-		fileSizeInString = to_string(content.length());
-		returnedMsg += fileSizeInString;
-		returnedMsg += "\r\n\r\n";
-		returnedMsg += content; // Get content
-		buffLen = returnedMsg.size();
-		strcpy(sendBuff, returnedMsg.c_str());
-		break;
-	case OPTIONS:
-		returnedMsg = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE\r\n";
-		returnedMsg += "Content-length: 0\r\n\r\n";
-		buffLen = returnedMsg.size();
-		strcpy(sendBuff, returnedMsg.c_str());
-		break;
-	default:
-		break;
 	}
 	bytesSent = send(msgSocket, sendBuff, buffLen, 0);
 	//clean buffer: memset put NULL in every spot of the buffer 
@@ -292,37 +146,191 @@ void sendMessage(int index, SocketState* sockets)
 	sockets[index].send = IDLE;
 }
 
-void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& returnedMsg, time_t& currentTime, std::string& fileSizeInString, int& buffLen, char  sendBuff[2048])
+void optionsReq(std::string& returnedMsg, int& buffLen, char  sendBuff[2048])
 {
-	fileSize = strlen("TRACE ");
-	fileSize += strlen(sockets[index].buff);
-	returnedMsg = "HTTP/1.1 200 OK \r\nContent-type: message/http\r\nDate: ";
-	returnedMsg += ctime(&currentTime);
-	returnedMsg += "Content-length: ";
-	fileSizeInString = to_string(fileSize);
-	returnedMsg += fileSizeInString;
-	returnedMsg += "\r\n\r\n";
-	returnedMsg += "TRACE ";
-	returnedMsg += sockets[index].buff;
+	returnedMsg = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE\r\n";
+	returnedMsg += "Content-length: 0\r\n\r\n";
 	buffLen = returnedMsg.size();
 	strcpy(sendBuff, returnedMsg.c_str());
 }
 
-/*
-void sendTraceMsg(int index, SocketState* sockets){
-	fileSize = strlen("TRACE ");
-	fileSize += strlen(sockets[index].buff);
-	returnedMsg = "HTTP/1.1 200 OK \r\nContent-type: message/http\r\nDate: ";
+void postReq(std::string& returnedMsg, time_t& currentTime, std::string& content, SocketState* sockets,
+	int index, int& buffLen, char  sendBuff[2048])
+{
+	size_t foundNewLine;
+	//might need to change from ori
+	returnedMsg = "HTTP/1.1 200 OK \r\nDate:";
 	returnedMsg += ctime(&currentTime);
-	returnedMsg += "Content-length: ";
-	fileSizeInString = to_string(fileSize);
-	returnedMsg += fileSizeInString;
-	returnedMsg += "\r\n\r\n";
-	returnedMsg += "TRACE ";
-	returnedMsg += sockets[index].buff;
+	returnedMsg += "Content-length: 0\r\n\r\n";
+	content = (string)sockets[index].buff;
+	foundNewLine = content.find("\r\n\r\n");
+	cout << "------------------------------------------------------------\n"
+		<< "Message received!\n"
+		<< "\n------------------------------------------------------------\n"
+		<< &content[foundNewLine + 4]
+		<< "\n------------------------------------------------------------\n\n";
 	buffLen = returnedMsg.size();
 	strcpy(sendBuff, returnedMsg.c_str());
-}*/
+}
+
+void putReq(int& returnCode, int index, SocketState* sockets, std::string& returnMsg,
+	time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048])
+{
+	char fileName[BUFF_MAX_SIZE];
+	returnCode = putRequestHelper(index, fileName, sockets);
+	switch (returnCode)
+	{
+		case 0:
+		{
+			cout << "PUT " << fileName << "Failed";
+			returnMsg = "HTTP/1.1 412 Precondition failed \r\nDate: ";
+			break;
+		}
+		case 200:
+		{
+			returnMsg = "HTTP/1.1 200 OK \r\nDate: ";
+			break;
+		}
+		case 201:
+		{
+			returnMsg = "HTTP/1.1 201 Created \r\nDate: ";
+			break;
+		}
+		case 204:
+		{
+			returnMsg = "HTTP/1.1 204 No Content \r\nDate: ";
+			break;
+		}
+		default:
+		{
+			returnMsg = "HTTP/1.1 501 Not Implemented \r\nDate: ";
+			break;
+		}
+	}
+
+	createReturnMsg(returnMsg, currentTime, fileSize, buffLen, sendBuff);
+}
+
+void getReq(string& innerAddress, string& msgLang, int index, 
+	SocketState* sockets, string& errorAddress, string& returnedMsg, 
+	string& url, char  readBuff[2048], string& content, time_t& currentTime, 
+	int fileSize, int& buffLen, char  sendBuff[2048])
+{
+	ifstream httpFile;
+	string address = innerAddress;
+	msgLang = getLanguage(index, sockets);
+	if (msgLang == "Error")
+	{
+		httpFile.open(errorAddress); //Error::No Language matched: there is no supporting language
+		returnedMsg = "HTTP/1.1 404 Not Found ";
+	}
+	else
+	{
+		languageAppend(address, msgLang, url, sockets, index, httpFile, returnedMsg, true);
+	}
+
+	if (httpFile)
+	{
+		// Read content from file to string and get its length
+		while (httpFile.getline(readBuff, BUFF_MAX_SIZE))
+			content += readBuff;
+	}
+	//dadsa(httpFile, returnMsg, currTime, fileSizeInString, content, buffLen, sendBuff);
+	closeFileSequence(httpFile, returnedMsg, currentTime, fileSize, buffLen, sendBuff, content);
+}
+
+void languageAppend(string& address, string& msgLang, string& url, SocketState* sockets, int index, ifstream& httpFile, string& returnedMsg, bool isGet)
+{
+	size_t findQuestionMark;
+	address.append(msgLang);
+	address += "\\";
+	url = strtok(sockets[index].buff, " ");
+	findQuestionMark = url.find("?");
+	if (findQuestionMark != string::npos)//lang Query String exist
+	{
+		url = url.substr(0, findQuestionMark);
+	}
+	address.append(url);
+	httpFile.open(address);
+	if(isGet)
+		returnedMsg = "HTTP/1.1 200 OK ";
+}
+
+void headReq(std::string& innerAddress, 
+	string& msgLang, int index, SocketState* sockets, string& errorAddress, string& url, string& returnMsg, 
+	int& fileSize, time_t& currentTime, int& buffLen, char  sendBuff[2048])
+{
+	ifstream httpFile;
+	string address = innerAddress;
+	msgLang = getLanguage(index, sockets);
+	if (msgLang == "Error")
+		httpFile.open(errorAddress); //Error::No Language matched: there is no supporting language
+	else
+	{
+		languageAppend(address, msgLang, url, sockets, index, httpFile, returnMsg, false);
+	}
+	if (!httpFile)
+		returnMsg = "HTTP/1.1 404 Not Found ";
+	else
+	{
+		returnMsg = "HTTP/1.1 200 OK ";
+		// Read content from file to string and get its length
+		httpFile.seekg(0, ios::end);
+		fileSize = httpFile.tellg(); // get length of content in file
+	}
+	closeFileSequence(httpFile, returnMsg, currentTime, fileSize, buffLen, sendBuff);
+}
+
+
+void closeFileSequence(ifstream& httpFile, string& returnedMsg, time_t& currentTime, 
+	int fileSize, int& buffLen, char  sendBuff[2048], string content = "")
+{
+	httpFile.close();
+	returnedMsg += "\r\nContent-type: text/html \r\nDate:";
+	createReturnMsg(returnedMsg, currentTime, fileSize, buffLen, sendBuff, content);
+}
+
+void createReturnMsg(string& returnMsg, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048], string content = "")
+{
+	returnMsg += ctime(&currentTime);
+	returnMsg += "Content-length: " + to_string(fileSize) + "\r\n\r\n";
+	//returnMsg += to_string(fileSize) + "\r\n\r\n";
+	//returnMsg += "\r\n\r\n";
+	if (content != "")
+		returnMsg += content; // Get content
+	buffLen = returnMsg.size();
+	strcpy(sendBuff, returnMsg.c_str());
+}
+
+void deleteReq(string& innerAddress, SocketState* sockets, int index, char  deleteBuff[2048],
+	string& returnMsg, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048])
+{
+	string address = innerAddress;
+	address += strtok(sockets[index].buff, " ");//get the file name
+	strcpy(deleteBuff, address.c_str());//move address to char* variable
+	if (remove(deleteBuff) != 0)
+	{
+		returnMsg = "HTTP/1.1 204 No Content \r\nDate: "; // We treat 204 code as a case where delete wasn't successful
+	}
+	else
+	{
+		returnMsg = "HTTP/1.1 200 OK \r\nDate: "; // File deleted succesfully
+	}
+
+	createReturnMsg(returnMsg, currentTime, fileSize, buffLen, sendBuff);
+}
+
+void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& returnMsg, time_t& currentTime, int& buffLen, char  sendBuff[2048])
+{
+	fileSize = strlen("TRACE ") + strlen(sockets[index].buff);
+	returnMsg = "HTTP/1.1 200 OK \r\nContent-type: message/http\r\nDate: ";
+	returnMsg += ctime(&currentTime);
+	returnMsg += "Content-length: " + to_string(fileSize) + "\r\n\r\nTRACE ";
+	returnMsg += sockets[index].buff;
+	buffLen = returnMsg.size();
+	strcpy(sendBuff, returnMsg.c_str());
+}
+
 
 // A utility to check for the inactive sockets (if the response time is greater then 2 minutes) and remove them
 void updateSocStemp(SocketState* sockets, int& socCount)
@@ -359,7 +367,7 @@ void updateSubType(int index, SocketState* sockets)
 	sockets[index].buff[sockets[index].len] = '\0';
 }
 
-string getLen(int index, SocketState* sockets)
+string getLanguage(int index, SocketState* sockets)
 {
 	static map<string, string> request = { {"en","English"},{"en-AU","English"},{"en-BZ","English"},{"en-CA","English"},{"en-CB","English"},{"en-GB","English"},{"en-IE","English"},
 										{"en-JM","English"},{"en-NZ","English"},{"en-PH","English"},{"en-TT","English"},{"en-US","English"},{"en-ZA","English"},{"en-ZW","English"},
@@ -385,7 +393,7 @@ string getLen(int index, SocketState* sockets)
 	}
 }
 
-int putReq(int index, char* filename, SocketState* sockets)
+int putRequestHelper(int index, char* filename, SocketState* sockets)
 {
 	string content, buff = (string)sockets[index].buff, address = "C:\\Temp\\HTML_FILES\\";
 	int buffLen = 0;

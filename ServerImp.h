@@ -39,11 +39,21 @@ void removeSocket(int index, SocketState* sockets, int& socCount);
 void acceptConnection(int index, SocketState* sockets, int& socCount);
 void receiveMessage(int index, SocketState* sockets, int& socCount);
 void sendMessage(int index, SocketState* sockets);
-void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& returnedMsg, time_t& currentTime, std::string& fileSizeInString, int& buffLen, char  sendBuff[2048]);
+void optionsReq(std::string& returnedMsg, int& buffLen, char  sendBuff[2048]);
+void postReq(std::string& returnedMsg, time_t& currentTime, std::string& content, SocketState* sockets, int index, int& buffLen, char  sendBuff[2048]);
+void putReq(int& returnCode, int index, SocketState* sockets, std::string& returnedMsg, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048]);
+void getReq(string& innerAddress, string& msgLang, int index, SocketState* sockets, string& errorAddress, string& returnedMsg, string& url, char  readBuff[2048], string& content, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048]);
+void languageAppend(std::string& address, std::string& msgLang, std::string& url, SocketState* sockets, int index, std::ifstream& httpFile, string& returnedMsg, bool isGet);
+void headReq(string& innerAddress, string& msgLang, int index, SocketState* sockets, string& errorAddress, string& url, string& returnedMsg, int& fileSize, time_t& currentTime, int& buffLen, char  sendBuff[2048]);
+void dadsa(ifstream& httpFile, string& returnedMsg, time_t& currentTime, string& fileSizeInString, std::string& content, int& buffLen, char  sendBuff[2048]);
+void closeFileSequence(ifstream& httpFile, string& returnedMsg, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048], string content);
+void createReturnMsg(string& returnedMsg, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048], string content);
+void deleteReq(string& innerAddress, SocketState* sockets, int index, char  deleteBuff[2048], string& returnedMsg, time_t& currentTime, int fileSize, int& buffLen, char  sendBuff[2048]);
+void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& returnedMsg, time_t& currentTime, int& buffLen, char  sendBuff[2048]);
 void updateSocStemp(SocketState* sockets, int& socCount);
 void updateSubType(int index, SocketState* sockets);
-string getLen(int index, SocketState* sockets);
-int putReq(int index, char* filename, SocketState* sockets);
+string getLanguage(int index, SocketState* sockets);
+int putRequestHelper(int index, char* filename, SocketState* sockets);
 
 
 
