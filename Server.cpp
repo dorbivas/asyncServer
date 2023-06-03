@@ -1,12 +1,10 @@
 #include "ServerImp.h"
 
-
 void main()
 {
 	struct SocketState sockets[MAX_SOCKETS] = { 0 };
 	int socCount = 0;
 	
-
 	struct timeval timeOut;
 	timeOut.tv_sec = 120;
 	timeOut.tv_usec = 0;
@@ -53,16 +51,9 @@ void main()
 	
 	addSocket(listenSocket, LSTN, sockets, socCount);
 
-	// Accept connections and handles them one by one.
 	cout << "Waiting for client to connect to the server." << endl;
 	while (true)
 	{
-		// The select function determines the status of one or more sockets,
-		// waiting if necessary, to perform asynchronous I/O. Use fd_sets for
-		// sets of handles for reading, writing and exceptions. select gets "timeout" for waiting
-		// and still performing other operations (Use NULL for blocking). Finally,
-		// select returns the number of descriptors which are ready for use (use FD_ISSET
-		// macro to check which descriptor in each set is ready to be used).
 		updateSocStemp(sockets, socCount);
 		fd_set waitRecv;
 		FD_ZERO(&waitRecv);
@@ -72,16 +63,16 @@ void main()
 				FD_SET(sockets[i].id, &waitRecv);
 		}
 
-		fd_set waitSend;
-		FD_ZERO(&waitSend);
+		fd_set waitToSend;
+		FD_ZERO(&waitToSend);
 		for (int i = 0; i < MAX_SOCKETS; i++)
 		{
 			if (sockets[i].send == SND)
-				FD_SET(sockets[i].id, &waitSend);
+				FD_SET(sockets[i].id, &waitToSend);
 		}
 		
 		int nfd;
-		nfd = select(0, &waitRecv, &waitSend, NULL, &timeOut);
+		nfd = select(0, &waitRecv, &waitToSend, NULL, &timeOut);
 		if (nfd == SOCKET_ERROR)
 		{
 			cout << "HTTP Server: Error at select(): " << WSAGetLastError() << endl;
@@ -101,7 +92,7 @@ void main()
 					break;
 
 				case RCV:
-					receiveMessage(i, sockets, socCount);
+					receiveMssge(i, sockets, socCount);
 					break;
 				}
 			}
@@ -109,15 +100,14 @@ void main()
 
 		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
 		{
-			if (FD_ISSET(sockets[i].id, &waitSend))
+			if (FD_ISSET(sockets[i].id, &waitToSend))
 			{
 				nfd--;
 				sendMessage(i, sockets);
 			}
 		}
 	}
-
-	// Closing connections and Winsock.
+	
 	cout << "HTTP Server: Closing Connection.\n";
 	closesocket(listenSocket);
 	WSACleanup();

@@ -10,7 +10,6 @@
 #include <iostream>
 #include <winsock2.h>
 
-
 using namespace std;
 using std::map;
 
@@ -31,19 +30,20 @@ struct SocketState
 	HttpReq sendSubType;
 	time_t activeStemp;
 	char buff[BUFF_MAX_SIZE];
-	int len;
+	int lan;
 };
 
 bool addSocket(SOCKET id, Status what, SocketState* sockets, int& socCount);
-void removeSocket(int index, SocketState* sockets, int& socCount);
+void removeSoc(int index, SocketState* sockets, int& socCount);
+void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& retMsg, time_t& currTime, std::string& fSize, int& buffLen, char  sendBuff[2048]);
 void acceptConnection(int index, SocketState* sockets, int& socCount);
-void receiveMessage(int index, SocketState* sockets, int& socCount);
+void receiveMssge(int index, SocketState* sockets, int& socCount);
 void sendMessage(int index, SocketState* sockets);
-void sendTrace(int& fileSize, SocketState* sockets, int index, std::string& returnedMsg, time_t& currentTime, std::string& fileSizeInString, int& buffLen, char  sendBuff[2048]);
+void displayContent(std::ifstream& httpFile, std::string& returnedMsg, time_t& currentTime, std::string& fileSizeInString, int fileSize, int& buffLen, char  sendBuff[2048]);
 void updateSocStemp(SocketState* sockets, int& socCount);
 void updateSubType(int index, SocketState* sockets);
 string getLen(int index, SocketState* sockets);
-int putReq(int index, char* filename, SocketState* sockets);
+int putReq(int index, char* file, SocketState* sockets);
 
 
 
