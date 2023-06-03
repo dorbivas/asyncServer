@@ -13,9 +13,10 @@
 using namespace std;
 using std::map;
 
+const int MAX_Q_SIZE = 5;
 const int TIME_PORT = 27015;
-const int MAX_SOCKETS = 60;
-constexpr int BUFF_MAX_SIZE = 2048;
+const int MAX_SOCKETS = 69;
+constexpr int BUFF_MAX_SIZE = 4096;
 const int SEND_TIME = 1;
 const int SEND_SECONDS = 2;
 

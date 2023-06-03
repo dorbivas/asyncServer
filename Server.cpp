@@ -41,7 +41,7 @@ void main()
 		return;
 	}
 
-	if (SOCKET_ERROR == listen(listenSocket, 5))
+	if (SOCKET_ERROR == listen(listenSocket, MAX_Q_SIZE))
 	{
 		cout << "Time Server: Error at listen(): " << WSAGetLastError() << endl;
 		closesocket(listenSocket);
