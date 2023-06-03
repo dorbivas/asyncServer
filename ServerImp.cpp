@@ -101,6 +101,7 @@ void sendMessage(int index, SocketState* sockets)
 		errorAddress = "C:\\temp\\HTML_FILES\\Error\\error.html", url, msgLang;
 	time_t currentTime;
 	time(&currentTime); 
+	string newAddress;
 	SOCKET msgSocket = sockets[index].id;
 	sockets[index].activeStemp = time(0);// handle timeout
 	
@@ -109,8 +110,9 @@ void sendMessage(int index, SocketState* sockets)
 		sendTrace(fileSize, sockets, index, retMsg, currentTime, fileSizeInString, buffLen, sendBuff);
 		break;
 	case DELETE_:
-		address = innerAddress;
-		address += strtok(sockets[index].buff, " "); 
+		newAddress = innerAddress + strtok(sockets[index].buff, " ");
+		address = newAddress.substr(0, 37);
+
 		strcpy(deleteBuff, address.c_str());
 		if (remove(deleteBuff) != 0)
 		{
@@ -184,7 +186,10 @@ void sendMessage(int index, SocketState* sockets)
 		{
 			address.append(msgLang);
 			address += "\\";
-			url = strtok(sockets[index].buff, " ");
+	
+			string newUrl = strtok(sockets[index].buff, " ");
+			std::string url = newUrl.substr(0, 10);
+
 			found = url.find("?");
 			if (found != std::string::npos)
 			{
@@ -362,7 +367,7 @@ string getLen(int index, SocketState* sockets)
 	}
 	
 	else {
-		return "Errr";
+		return "Error";
 	}
 }
 
